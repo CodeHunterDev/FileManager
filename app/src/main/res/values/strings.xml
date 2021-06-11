@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">File Manager</string>
+    <string name="provide_storage_permission">Please provide storage permissions</string>
+    <string name="home">Home</string>
+</resources>
