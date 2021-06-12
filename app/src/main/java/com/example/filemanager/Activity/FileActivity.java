@@ -2,6 +2,7 @@ package com.example.filemanager.Activity;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatImageView;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -12,6 +13,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -20,43 +22,59 @@ import android.widget.Toast;
 
 import com.example.filemanager.Adapters.FileAdapter;
 import com.example.filemanager.BuildConfig;
+import com.example.filemanager.CustomView.CreateFolderDialog;
 import com.example.filemanager.FileUtils.FileConstants;
 import com.example.filemanager.FileUtils.FileOperations;
 import com.example.filemanager.Interface.OnClick;
 import com.example.filemanager.R;
 
 import java.io.File;
-import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.List;
 
-public class FileActivity extends AppCompatActivity implements OnClick, View.OnClickListener {
+public class FileActivity extends AppCompatActivity implements OnClick, View.OnClickListener, CreateFolderDialog.DialogClick {
+
+    public static enum ACTION {COPY, MOVE, NONE}
+
+    private static final String TAG = "FileActivity";
 
     TextView toolbarTitle;
     LinearLayout bottomBarLL;
+    LinearLayout confirmationControllerLL;
+    LinearLayout actionControllerLL;
     LinearLayout noFileLayoutLL;
     ImageView backArrow;
+    ImageView createNewFolder;
+    AppCompatImageView deleteIv;
+    AppCompatImageView copyIv;
+    AppCompatImageView cutIv;
+    AppCompatImageView shareIv;
+    AppCompatImageView moreIv;
+    AppCompatImageView cancelIv;
+    AppCompatImageView pasteIV;
+
+
     RecyclerView fileRecyclerView;
     FileAdapter fileAdapter;
+
     List<File> fileList;
+    List<File> copyOrMoveFileList = new ArrayList<>();
 
-    private final int STORAGE_PERMISSION_CODE = 1111;
+    boolean[] selectedPositions;
+    ACTION copyOrCut = ACTION.NONE;
+
     private String currentPath = FileConstants.HOME_DIRECTORY;
+    private String copyOrMoveFilePath = "";
+    private final int STORAGE_PERMISSION_CODE = 1111;
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (isPermissionAreGranted()) {
-            initializeFileManager(FileConstants.HOME_DIRECTORY);
-        } else {
-            requestForPermission();
-        }
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file);
         init();
+        if (!isPermissionAreGranted()) requestForPermission();
+        else initializeFileManager(FileConstants.HOME_DIRECTORY);
     }
 
     private void init() {
@@ -64,9 +82,28 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
         fileRecyclerView = findViewById(R.id.file_recyclerview);
         toolbarTitle = findViewById(R.id.toolbar_title_tv);
         backArrow = findViewById(R.id.back_arrow_iv);
+        createNewFolder = findViewById(R.id.create_folder_iv);
         noFileLayoutLL = findViewById(R.id.no_file_layout_ll);
+        confirmationControllerLL = findViewById(R.id.confirmation_controller_ll);
+        actionControllerLL = findViewById(R.id.main_controller_ll);
+        deleteIv = findViewById(R.id.delete_iv);
+        copyIv = findViewById(R.id.copy_iv);
+        cancelIv = findViewById(R.id.cancel_iv);
+        pasteIV = findViewById(R.id.paset_iv);
+        cutIv = findViewById(R.id.cut_iv);
+        shareIv = findViewById(R.id.share_iv);
+        moreIv = findViewById(R.id.more_iv);
 
         backArrow.setOnClickListener(this);
+        createNewFolder.setOnClickListener(this);
+        deleteIv.setOnClickListener(this);
+        copyIv.setOnClickListener(this);
+        cutIv.setOnClickListener(this);
+        shareIv.setOnClickListener(this);
+        moreIv.setOnClickListener(this);
+        cancelIv.setOnClickListener(this);
+        pasteIV.setOnClickListener(this);
+
         setRecyclerView();
         setToolbar();
     }
@@ -97,12 +134,20 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
     private void initializeFileManager(String path) {
         fileList = FileOperations.getFiles(path);
         if (fileList != null && fileList.size() > 0) {
-            fileAdapter = new FileAdapter(fileList, this, this);
+            setFileSelection();
+            fileAdapter = new FileAdapter(fileList, this, this, selectedPositions);
             fileRecyclerView.setAdapter(fileAdapter);
             showList();
         } else {
             hideList();
         }
+    }
+
+    private void setFileSelection() {
+        toggleBottomBar();
+        selectedPositions = new boolean[fileList.size()];
+        for (int i = 0; i < fileList.size(); i++)
+            selectedPositions[i] = false;
     }
 
     boolean isPermissionAreGranted() {
@@ -143,11 +188,11 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
             initializeFileManager(currentPath);
             setToolbar();
         } else {
-            shareFile(fileList.get(position));
+            openFile(fileList.get(position));
         }
     }
 
-    private void shareFile(File file) {
+    private void openFile(File file) {
         Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, file);
         String mime = getContentResolver().getType(uri);
 
@@ -161,8 +206,21 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
     }
 
     @Override
-    public void OnItemLongClick(int position) {
+    public void OnItemLongClick(boolean[] selectedPositions) {
+        this.selectedPositions = selectedPositions;
+        checkForSelection();
+    }
 
+    private void checkForSelection() {
+        boolean isSelected = false;
+        for (int i = 0; i < selectedPositions.length; i++) {
+            if (selectedPositions[i]) {
+                isSelected = true;
+                break;
+            }
+        }
+        bottomBarLL.setVisibility(isSelected ? View.VISIBLE : View.GONE);
+        toggleControllerBar();
     }
 
     @Override
@@ -172,14 +230,87 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
                 handleOnBackPressed();
             }
             break;
+            case R.id.create_folder_iv: {
+                createFolder();
+            }
+            break;
+            case R.id.delete_iv: {
+                deleteFile();
+            }
+            break;
+            case R.id.cut_iv: {
+
+            }
+            break;
+            case R.id.copy_iv: {
+                copyFile();
+            }
+            break;
+            case R.id.share_iv: {
+
+            }
+            break;
+            case R.id.more_iv: {
+
+            }
+            break;
+            case R.id.cancel_iv: {
+                cancelCopyOrPaste();
+            }
+            break;
+            case R.id.paset_iv: {
+
+            }
+            break;
         }
+    }
+
+    private void cancelCopyOrPaste() {
+        copyOrMoveFileList.clear();
+        copyOrCut = ACTION.NONE;
+        copyOrMoveFilePath = "";
+        toggleBottomBar();
+    }
+
+    private void copyFile() {
+        copyOrMoveFilePath = currentPath;
+        copyOrMoveFileList.clear();
+        for (int i = 0; i < selectedPositions.length; i++) {
+            if (selectedPositions[i])
+                copyOrMoveFileList.add(fileList.get(i));
+        }
+        copyOrCut = ACTION.COPY;
+        toggleControllerBar();
+    }
+
+    private void toggleBottomBar() {
+        bottomBarLL.setVisibility(copyOrCut == ACTION.NONE ? View.GONE : View.VISIBLE);
+        toggleControllerBar();
+    }
+
+    private void toggleControllerBar() {
+        confirmationControllerLL.setVisibility(copyOrCut == ACTION.NONE ? View.GONE : View.VISIBLE);
+        actionControllerLL.setVisibility(copyOrCut == ACTION.NONE ? View.VISIBLE : View.GONE);
+    }
+
+    private void deleteFile() {
+        for (int i = 0; i < selectedPositions.length; i++)
+            if (selectedPositions[i])
+                FileOperations.deleteFileOrFolder(fileList.get(i));
+        initializeFileManager(currentPath);
+    }
+
+    private void createFolder() {
+        CreateFolderDialog createFolderDialog = new CreateFolderDialog(this, this);
+        createFolderDialog.show();
     }
 
     private void handleOnBackPressed() {
         if (currentPath.equals(FileConstants.HOME_DIRECTORY)) {
-            onBackPressed();
+            super.onBackPressed();
         } else {
             currentPath = FileOperations.goToBackFolder(currentPath);
+            setFileSelection();
             initializeFileManager(currentPath);
             setToolbar();
         }
@@ -188,5 +319,12 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
     @Override
     public void onBackPressed() {
         handleOnBackPressed();
+    }
+
+    @Override
+    public void onCreateClick(String fileName) {
+        Log.e(TAG, "onCreateClick: " + fileName);
+        FileOperations.createNewFolder(currentPath, fileName);
+        initializeFileManager(currentPath);
     }
 }

@@ -1,13 +1,18 @@
 package com.example.filemanager.FileUtils;
 
+import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.RequiresApi;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 public class FileOperations {
@@ -32,18 +37,10 @@ public class FileOperations {
 
     private static List<File> filterFileList(File[] files) {
         List<File> fileList = new ArrayList<>();
-        if (files != null && files.length > 1) {
+        if (files != null && files.length > 0) {
             for (File singleFile : files) {
-                String fileName = getFileName(singleFile);
-                if (!(fileName.charAt(0) == '.')) {
-                    if (singleFile.isFile()) {
-                        if (fileName.contains(".")) {
-                            fileList.add(singleFile);
-                        }
-                    }else{
-                        fileList.add(singleFile);
-                    }
-                }
+                if (!singleFile.isHidden())
+                    fileList.add(singleFile);
             }
         }
         return fileList;
@@ -77,4 +74,61 @@ public class FileOperations {
         String path = currentPath.substring(0, currentPath.lastIndexOf('/'));
         return path;
     }
+
+    public static String getStringSizeLengthFile(long size) {
+
+        DecimalFormat df = new DecimalFormat("0.00");
+
+        float sizeKb = 1024.0f;
+        float sizeMb = sizeKb * sizeKb;
+        float sizeGb = sizeMb * sizeKb;
+        float sizeTerra = sizeGb * sizeKb;
+
+
+        if (size < sizeMb)
+            return df.format(size / sizeKb) + " Kb";
+        else if (size < sizeGb)
+            return df.format(size / sizeMb) + " Mb";
+        else if (size < sizeTerra)
+            return df.format(size / sizeGb) + " Gb";
+
+        return "";
+    }
+
+    public static String gesStringLastModifiedDate(long timestamp) {
+        Date d = new Date(timestamp);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd MMM yyyy");
+        return simpleDateFormat.format(d);
+    }
+
+    public static void createNewFolder(String path, String name) {
+        Log.e(TAG, "createNewFolder: " + path + File.separator + name);
+        File file = new File(path + File.separator + name);
+        if (!file.exists())
+            file.mkdir();
+    }
+
+    public static void deleteFileOrFolder(File fileOrFolder) {
+        if (fileOrFolder.isDirectory()) {
+            for (File singleFile :
+                    fileOrFolder.listFiles()) {
+                deleteFileOrFolder(singleFile);
+            }
+        }
+        fileOrFolder.delete();
+    }
+
+    public static void copy(String origin, String dest) {
+        File originFile = new File(origin);
+        File destFile = new File(dest);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Files.copy(originFile.toPath(), destFile.toPath());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 }

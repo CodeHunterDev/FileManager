@@ -31,8 +31,20 @@
                 android:layout_height="wrap_content"
                 android:layout_centerHorizontal="true"
                 android:layout_centerVertical="true"
+                android:ellipsize="end"
+                android:maxLength="20"
+                android:maxLines="1"
                 android:textSize="18dp"
-                tools:text="download" />
+                tools:text="@string/home" />
+
+            <ImageView
+                android:id="@+id/create_folder_iv"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:layout_marginRight="@dimen/dimen_12dp"
+                android:src="@drawable/ic_create_new_folder" />
 
         </RelativeLayout>
 
@@ -66,12 +78,12 @@
             android:layout_height="@dimen/dimen_12dp" />
 
         <TextView
-            android:textSize="24dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="No Files !"
+            android:textAlignment="center"
             android:textColor="@color/dove_grey"
-            android:textAlignment="center" />
+            android:textSize="24dp" />
 
     </LinearLayout>
 
@@ -81,9 +93,88 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/dimen_48dp"
         android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:visibility="gone">
+        android:background="@color/yellow_orange"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/main_controller_ll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentBottom="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/delete_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_delete"
+                android:tint="@color/white" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/copy_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_copy"
+                android:tint="@color/white" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/cut_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_cut"
+                android:tint="@color/white" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/share_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_share"
+                android:tint="@color/white" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/more_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_more_horiz"
+                android:tint="@color/white" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/confirmation_controller_ll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_alignParentBottom="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/cancel_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_close"
+                android:tint="@color/white" />
+
+            <androidx.appcompat.widget.AppCompatImageView
+                android:id="@+id/paset_iv"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_weight="1"
+                android:src="@drawable/ic_check"
+                android:tint="@color/white" />
+
+        </LinearLayout>
 
     </LinearLayout>
+
 
 </RelativeLayout>
