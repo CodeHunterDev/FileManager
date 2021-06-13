@@ -12,6 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.filemanager.AppController;
 import com.example.filemanager.FileUtils.FileIcon;
 import com.example.filemanager.FileUtils.FileOperations;
 import com.example.filemanager.Interface.OnClick;
@@ -52,7 +53,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHodler> {
         holder.mainContainerLL.setBackgroundColor(Color.parseColor(selectedPositions[position] ? "#ededed" : "#FFFFFF"));
 
         holder.itemView.setOnClickListener(v -> {
-            if(isAnyFileSelected()){
+            if(isAnyFileSelected() && !AppController.isCopyOrCut){
                 selectItem(position);
             }else{
                 onItemListener.OnItemClick(position);

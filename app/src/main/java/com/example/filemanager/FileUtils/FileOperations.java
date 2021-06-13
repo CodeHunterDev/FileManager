@@ -5,8 +5,13 @@ import android.util.Log;
 
 import androidx.annotation.RequiresApi;
 
+import com.example.filemanager.Activity.FileActivity;
+import com.example.filemanager.AppController;
+
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -36,14 +41,23 @@ public class FileOperations {
     }
 
     private static List<File> filterFileList(File[] files) {
+        List<File> mainFileList = new ArrayList<>();
+        List<File> folderList = new ArrayList<>();
         List<File> fileList = new ArrayList<>();
         if (files != null && files.length > 0) {
             for (File singleFile : files) {
-                if (!singleFile.isHidden())
-                    fileList.add(singleFile);
+                if (!singleFile.isHidden()) {
+                    if (singleFile.isDirectory())
+                        folderList.add(singleFile);
+                    if (singleFile.isFile())
+                        fileList.add(singleFile);
+                }
             }
         }
-        return fileList;
+        mainFileList.clear();
+        mainFileList.addAll(folderList);
+        mainFileList.addAll(fileList);
+        return mainFileList;
     }
 
     private static File[] sortFilesByName(File[] files) {
@@ -108,7 +122,7 @@ public class FileOperations {
             file.mkdir();
     }
 
-    public static void deleteFileOrFolder(File fileOrFolder) {
+    public static void deleteFileOrFolder(File fileOrFolder) throws FileNotFoundException {
         if (fileOrFolder.isDirectory()) {
             for (File singleFile :
                     fileOrFolder.listFiles()) {
@@ -118,17 +132,18 @@ public class FileOperations {
         fileOrFolder.delete();
     }
 
-    public static void copy(String origin, String dest) {
+    public static void copyOrMove(String origin, String dest) throws FileAlreadyExistsException {
         File originFile = new File(origin);
         File destFile = new File(dest);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 Files.copy(originFile.toPath(), destFile.toPath());
+                if (AppController.whichAction == FileActivity.ACTION.MOVE) {
+                    deleteFileOrFolder(originFile);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
-
-
 }

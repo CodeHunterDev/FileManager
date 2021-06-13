@@ -1,6 +1,7 @@
 package com.example.filemanager.Activity;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatImageView;
 import androidx.core.content.FileProvider;
@@ -21,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.filemanager.Adapters.FileAdapter;
+import com.example.filemanager.AppController;
 import com.example.filemanager.BuildConfig;
 import com.example.filemanager.CustomView.CreateFolderDialog;
 import com.example.filemanager.FileUtils.FileConstants;
@@ -29,6 +31,8 @@ import com.example.filemanager.Interface.OnClick;
 import com.example.filemanager.R;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,10 +65,9 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
     List<File> copyOrMoveFileList = new ArrayList<>();
 
     boolean[] selectedPositions;
-    ACTION copyOrCut = ACTION.NONE;
+    ACTION copyOrCutAction = ACTION.NONE;
 
     private String currentPath = FileConstants.HOME_DIRECTORY;
-    private String copyOrMoveFilePath = "";
     private final int STORAGE_PERMISSION_CODE = 1111;
 
 
@@ -192,6 +195,18 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
         }
     }
 
+    private void shareFile(File file) {
+        Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, file);
+        String mime = getContentResolver().getType(uri);
+
+        // Open file with user selected app
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_SEND);
+        intent.setDataAndType(uri, mime);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(intent);
+    }
+
     private void openFile(File file) {
         Uri uri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID, file);
         String mime = getContentResolver().getType(uri);
@@ -202,7 +217,6 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
         intent.setDataAndType(uri, mime);
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         startActivity(intent);
-
     }
 
     @Override
@@ -239,15 +253,19 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
             }
             break;
             case R.id.cut_iv: {
-
+                copyOrCutAction = ACTION.MOVE;
+                AppController.isCopyOrCut = true;
+                copyOrMoveFile();
             }
             break;
             case R.id.copy_iv: {
-                copyFile();
+                copyOrCutAction = ACTION.COPY;
+                AppController.isCopyOrCut = true;
+                copyOrMoveFile();
             }
             break;
             case R.id.share_iv: {
-
+                shareSelectedFiles();
             }
             break;
             case R.id.more_iv: {
@@ -255,48 +273,84 @@ public class FileActivity extends AppCompatActivity implements OnClick, View.OnC
             }
             break;
             case R.id.cancel_iv: {
-                cancelCopyOrPaste();
+                cancelPaste();
             }
             break;
             case R.id.paset_iv: {
-
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    pasteFile();
+                }
             }
             break;
         }
     }
 
-    private void cancelCopyOrPaste() {
-        copyOrMoveFileList.clear();
-        copyOrCut = ACTION.NONE;
-        copyOrMoveFilePath = "";
+    private void shareSelectedFiles() {
+        for (int i = 0; i < selectedPositions.length; i++) {
+            if (selectedPositions[i])
+                shareFile(fileList.get(i));
+        }
+        setFileSelection();
+        initializeFileManager(currentPath);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void pasteFile() {
+        AppController.whichAction = copyOrCutAction;
+        for (File singleFile : copyOrMoveFileList) {
+            try {
+                FileOperations.copyOrMove(singleFile.getAbsolutePath(), currentPath + File.separator + FileOperations.getFileName(singleFile));
+            } catch (FileAlreadyExistsException e) {
+                e.printStackTrace();
+                Toast.makeText(this, "file already exists in selected folder", Toast.LENGTH_SHORT).show();
+            }
+        }
+        AppController.isCopyOrCut = false;
+        copyOrCutAction = ACTION.NONE;
+        initializeFileManager(currentPath);
         toggleBottomBar();
     }
 
-    private void copyFile() {
-        copyOrMoveFilePath = currentPath;
+    private void cancelPaste() {
+        AppController.isCopyOrCut = false;
+        copyOrMoveFileList.clear();
+        copyOrCutAction = ACTION.NONE;
+        setFileSelection();
+        initializeFileManager(currentPath);
+        toggleBottomBar();
+    }
+
+    private void copyOrMoveFile() {
         copyOrMoveFileList.clear();
         for (int i = 0; i < selectedPositions.length; i++) {
             if (selectedPositions[i])
                 copyOrMoveFileList.add(fileList.get(i));
         }
-        copyOrCut = ACTION.COPY;
         toggleControllerBar();
     }
 
     private void toggleBottomBar() {
-        bottomBarLL.setVisibility(copyOrCut == ACTION.NONE ? View.GONE : View.VISIBLE);
+        bottomBarLL.setVisibility(copyOrCutAction == ACTION.NONE ? View.GONE : View.VISIBLE);
         toggleControllerBar();
     }
 
     private void toggleControllerBar() {
-        confirmationControllerLL.setVisibility(copyOrCut == ACTION.NONE ? View.GONE : View.VISIBLE);
-        actionControllerLL.setVisibility(copyOrCut == ACTION.NONE ? View.VISIBLE : View.GONE);
+        confirmationControllerLL.setVisibility(copyOrCutAction == ACTION.NONE ? View.GONE : View.VISIBLE);
+        actionControllerLL.setVisibility(copyOrCutAction == ACTION.NONE ? View.VISIBLE : View.GONE);
     }
 
     private void deleteFile() {
+
         for (int i = 0; i < selectedPositions.length; i++)
-            if (selectedPositions[i])
-                FileOperations.deleteFileOrFolder(fileList.get(i));
+            if (selectedPositions[i]) {
+                try {
+                    FileOperations.deleteFileOrFolder(fileList.get(i));
+                    Toast.makeText(this, "delete complete", Toast.LENGTH_SHORT).show();
+                } catch (FileNotFoundException fileNotFoundException) {
+                    fileNotFoundException.printStackTrace();
+                    Toast.makeText(this, "selected file does not exist", Toast.LENGTH_SHORT).show();
+                }
+            }
         initializeFileManager(currentPath);
     }
 
