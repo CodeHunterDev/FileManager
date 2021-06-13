@@ -15,8 +15,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FileManager">
 
-        <activity android:name=".Activity.FileActivity"></activity>
-        <activity android:name=".MainActivity">
+        <activity android:name=".Activity.FileActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -24,11 +23,13 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".MainActivity"></activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:grantUriPermissions="true"
+            android:authorities="${applicationId}"
             android:exported="false"
-            android:authorities="${applicationId}">
+            android:grantUriPermissions="true">
 
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
